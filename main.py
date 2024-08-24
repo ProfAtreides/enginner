@@ -1,52 +1,31 @@
-import os
-import numpy as np
-import pandas as pd
-from pyannote.audio import Inference, Model
-from pyannote.audio.pipelines import SpeakerDiarization
-from pyannote.metrics.diarization import DiarizationErrorRate
+import torch
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+from datasets import load_dataset
 
-def compare_voices(reference_embedding, target_audio):
-    target_embedding = embedding_inference(target_audio)
-    distance = np.linalg.norm(reference_embedding - target_embedding)
-    return distance
 
-# Load API token
-df = pd.read_csv('api_token.csv')
-api_key = df['hf'].iloc[0]
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
+torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
-# Load pre-trained embedding model
-embedding_model = Model.from_pretrained("pyannote/embedding",
-                                        use_auth_token=api_key)
-embedding_inference = Inference(embedding_model, window="whole")
+model_id = "openai/whisper-large-v3"
 
-# Load pre-trained diarization model
-diarization_pipeline = SpeakerDiarization.from_pretrained("pyannote/speaker-diarization",
-                                                          use_auth_token=api_key)
+model = AutoModelForSpeechSeq2Seq.from_pretrained(
+    model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+)
+model.to(device)
 
-# Reference audio file
-reference_audio = "source/input.wav"
+processor = AutoProcessor.from_pretrained(model_id)
 
-# Compute embedding for the reference audio
-reference_embedding = embedding_inference(reference_audio)
-# Diarization on the target audio file
-target_audio = "source/input.wav"
-diarization_result = diarization_pipeline(target_audio)
+pipe = pipeline(
+    "automatic-speech-recognition",
+    model=model,
+    tokenizer=processor.tokenizer,
+    feature_extractor=processor.feature_extractor,
+    torch_dtype=torch_dtype,
+    device=device,
+)
 
-# Define a threshold for similarity
-threshold = 0.0
+dataset = load_dataset("distil-whisper/librispeech_long", "clean", split="validation")
+sample = dataset[0]["audio"]
 
-# Iterate over the diarization result to extract segments and compare embeddings
-for turn, _, speaker in diarization_result.itertracks(yield_label=True):
-    segment_audio = f"{speaker}_{turn.start:.1f}-{turn.end:.1f}.wav"
-
-    # Extract the segment using ffmpeg
-    command = f"ffmpeg -i {target_audio} -ss {turn.start:.1f} -to {turn.end:.1f} -c copy {segment_audio} -y"
-    os.system(command)
-
-    # Compare the voice in the segment with the reference voice
-    similarity = compare_voices(reference_embedding, segment_audio)
-    if similarity < threshold:
-        print(f"The reference speaker speaks from {turn.start:.1f}s to {turn.end:.1f}s")
-
-    # Clean up the segment audio file
-    os.remove(segment_audio)
+result = pipe('source/audio.mp3')
+print(result["text"])
