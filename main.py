@@ -1,7 +1,7 @@
 import torch
+import translators as trans
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 from datasets import load_dataset
-
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
@@ -29,3 +29,9 @@ sample = dataset[0]["audio"]
 
 result = pipe('source/audio.mp3')
 print(result["text"])
+to_translate = result["text"]
+output = open("output.txt", "w")
+output.write(to_translate)
+output.close()
+print(type(to_translate))
+

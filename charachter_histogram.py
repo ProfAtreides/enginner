@@ -14,7 +14,7 @@ pipeline = Pipeline.from_pretrained(
 #pipeline.to(torch.device("cuda"))
 
 # apply pretrained pipeline
-diarization = pipeline("source/input.wav")
+diarization = pipeline("source/audio.mp3")
 
 # print the result
 for turn, _, speaker in diarization.itertracks(yield_label=True):
