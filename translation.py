@@ -1,7 +1,7 @@
 import translators as ts
 
-to_translate = open("output.txt", "r").read()
+print("Start translating...")
 
-print(to_translate)
+to_translate = open("output.txt", "r").read()
 
 print(ts.translate_text(to_translate, "baidu", "en", "pl"))
