@@ -1,0 +1,5 @@
+to_count = open("output.txt", "r").read()
+to_count = to_count.replace(" ", "")
+to_count = to_count.replace("\n", "")
+to_count = to_count.replace("\t", "")
+print(len(to_count))
